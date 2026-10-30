@@ -18,6 +18,9 @@ namespace TelemetryScore.Core
 
     internal static class TelemetryScore
     {
+        // Three sub-scores are independent: a user can flip switches (30) while traffic (40)
+        // still leaks because hosts are blocked only at DNS, and behavior (30) can still fire.
+        // Separating them makes the score actionable: the lowest sub-score tells you what to fix.
         public static ScoreBreakdown Evaluate(string netAuditCsvFolder)
         {
             var b = new ScoreBreakdown();
@@ -59,6 +62,7 @@ namespace TelemetryScore.Core
                     return 0;
                 }
             }
+            // Registry read can fail on locked-down machines; fall back to "default Full" which is the worst case
             catch { return 5; }
         }
 
@@ -72,6 +76,7 @@ namespace TelemetryScore.Core
                     return (v != null && Convert.ToInt32(v) == 1) ? 5 : 0;
                 }
             }
+            // HKCU key may not exist on fresh installs; treat as disabled
             catch { return 0; }
         }
 
@@ -84,6 +89,7 @@ namespace TelemetryScore.Core
                     return sc.Status == ServiceControllerStatus.Running ? 8 : 0;
                 }
             }
+            // HKCU key may not exist on fresh installs; treat as disabled
             catch { return 0; }
         }
 
@@ -117,6 +123,7 @@ namespace TelemetryScore.Core
                     return p.ExitCode == 0;
                 }
             }
+            // schtasks query failed (permissions/timeouts); assume task does not exist
             catch { return false; }
         }
 
@@ -153,6 +160,7 @@ namespace TelemetryScore.Core
                         }
                     }
                 }
+                // Skip malformed CSV rows; we only need byte totals, not per-row parsing
                 catch { }
             }
             return total;
@@ -186,6 +194,7 @@ namespace TelemetryScore.Core
                         }
                     }
                 }
+                // Skip malformed CSV rows; we only need byte totals, not per-row parsing
                 catch { }
             }
             return hits;
